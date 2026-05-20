@@ -190,7 +190,7 @@ export const COURTS: Court[] = [
   c('j22', 'TJMG',  'PJe',    '2G',     'https://pjerecursal.tjmg.jus.br/pje/login.seam',                                                                  'TJ'),
   c('j23', 'TJMG',  'eProc',  '1G',     'https://eproc1g.tjmg.jus.br/eproc/',                                                                              'TJ'),
   c('j24', 'TJMG',  'eProc',  '2G',     'https://eproc2g.tjmg.jus.br/eproc/',                                                                              'TJ'),
-  c('j25', 'TJMS',  'eSAJ',   '1G',     'https://esaj.tjms.jus.br/sajcas/login',                                                                           'TJ'),
+  c('j25', 'TJMS',  'eSAJ',   '1G',     'https://esaj.tjms.jus.br/sajcas/login#aba-cpf',                                                                   'TJ'),
   c('j26', 'TJMT',  'PJe',    '1G',     'https://pje.tjmt.jus.br/pje/login.seam',                                                                          'TJ'),
   c('j27', 'TJMT',  'PJe',    '2G',     'https://pje2.tjmt.jus.br/pje2/login.seam',                                                                        'TJ'),
   c('j28', 'TJPA',  'PJe',    '1G',     'https://pje.tjpa.jus.br/pje/login.seam',                                                                          'TJ'),
