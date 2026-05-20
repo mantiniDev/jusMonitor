@@ -4,6 +4,7 @@ export enum CourtStatus {
   CHECKING = 'CHECKING',
   ERROR = 'ERROR',
   UNKNOWN = 'UNKNOWN',
+  RESTRICTED = 'RESTRICTED', // Acesso restrito a rede interna / bloqueio de IP externo
 }
 
 export type CourtGroup = 'SUPERIOR' | 'TRF' | 'TJ' | 'TRT' | 'TRE';
@@ -16,6 +17,7 @@ export interface Court {
   grau: string;      // "1G", "2G", "Portal"
   url: string;
   group: CourtGroup;
+  restricted?: boolean; // true = acesso restrito a rede interna / IP bloqueado
 }
 
 export interface CourtWithStatus extends Court {
@@ -26,13 +28,13 @@ export interface CourtWithStatus extends Court {
 
 const c = (
   id: string, acronym: string, system: CourtSystem, grau: string,
-  url: string, group: CourtGroup
-): Court => ({ id, acronym, system, grau, url, group });
+  url: string, group: CourtGroup, restricted = false
+): Court => ({ id, acronym, system, grau, url, group, restricted });
 
 export const COURTS: Court[] = [
   // ==================== SUPERIORES ====================
-  c('s01', 'STF',  'Prop',   '2G',     'https://sistemas.stf.jus.br/cas/login',                                                                    'SUPERIOR'),
-  c('s02', 'STJ',  'Prop',   '2G',     'https://cpe.web.stj.jus.br/#/',                                                                            'SUPERIOR'),
+  c('s01', 'STF',  'Prop',   '2G',     'https://sistemas.stf.jus.br/cas/login',                                                                    'SUPERIOR', true),
+  c('s02', 'STJ',  'Prop',   '2G',     'https://cpe.web.stj.jus.br/#/',                                                                            'SUPERIOR', true),
   c('s03', 'CNJ',  'PJe',    '2G',     'https://www.cnj.jus.br/pjecnj/login.seam',                                                                 'SUPERIOR'),
   c('s04', 'TST',  'PJe',    '2G',     'https://pje.tst.jus.br/tst/login.seam',                                                                    'SUPERIOR'),
   c('s05', 'TST',  'Prop',   '2G',     'https://visualizacao-autos.tst.jus.br/visualizacaoAutos/Iniciar.pub?load=1',                                'SUPERIOR'),
@@ -44,8 +46,8 @@ export const COURTS: Court[] = [
   c('f03', 'TRF2',     'eProc', '2G', 'https://eproc.trf2.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',            'TRF'),
   c('f04', 'TRF2-JFES','eProc', '1G', 'https://eproc.jfes.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',            'TRF'),
   c('f05', 'TRF2-JFRJ','eProc', '1G', 'https://eproc.jfrj.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',            'TRF'),
-  c('f06', 'TRF3',     'PJe',   '1G', 'https://pje1g.trf3.jus.br/pje/login.seam',                                                                  'TRF'),
-  c('f07', 'TRF3',     'PJe',   '2G', 'https://pje2g.trf3.jus.br/pje/login.seam',                                                                  'TRF'),
+  c('f06', 'TRF3',     'PJe',   '1G', 'https://pje1g.trf3.jus.br/pje/login.seam',                                                                  'TRF', true),
+  c('f07', 'TRF3',     'PJe',   '2G', 'https://pje2g.trf3.jus.br/pje/login.seam',                                                                  'TRF', true),
   c('f08', 'TRF4',     'eProc', '2G', 'https://eproc.trf4.jus.br/eproc2trf4/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',       'TRF'),
   c('f09', 'TRF4-JFPR','eProc', '1G', 'https://eproc.jfpr.jus.br/eprocV2/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',          'TRF'),
   c('f10', 'TRF4-JFRS','eProc', '1G', 'https://eproc.jfrs.jus.br/eprocV2/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',          'TRF'),
@@ -70,8 +72,8 @@ export const COURTS: Court[] = [
   c('t08', 'TRT4',  'PJe', '2G', 'https://pje.trt4.jus.br/segundograu/login.seam',                      'TRT'),
   c('t09', 'TRT5',  'PJe', '1G', 'https://pje.trt5.jus.br/primeirograu/login.seam',                     'TRT'),
   c('t10', 'TRT5',  'PJe', '2G', 'https://pje.trt5.jus.br/segundograu/login.seam',                      'TRT'),
-  c('t11', 'TRT6',  'PJe', '1G', 'https://pje.trt6.jus.br/primeirograu/login.seam',                     'TRT'),
-  c('t12', 'TRT6',  'PJe', '2G', 'https://pje.trt6.jus.br/segundograu/login.seam',                      'TRT'),
+  c('t11', 'TRT6',  'PJe', '1G', 'https://pje.trt6.jus.br/primeirograu/login.seam',                     'TRT', true),
+  c('t12', 'TRT6',  'PJe', '2G', 'https://pje.trt6.jus.br/segundograu/login.seam',                      'TRT', true),
   c('t13', 'TRT7',  'PJe', '1G', 'https://pje.trt7.jus.br/primeirograu/login.seam',                     'TRT'),
   c('t14', 'TRT7',  'PJe', '2G', 'https://pje.trt7.jus.br/segundograu/login.seam',                      'TRT'),
   c('t15', 'TRT8',  'PJe', '1G', 'https://pje.trt8.jus.br/primeirograu/login.seam',                     'TRT'),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { COURTS } from '@/lib/courts';
+import { COURTS, CourtStatus } from '@/lib/courts';
 import { checkCourt } from '@/lib/scraper';
 import { updateCachedStatus } from '@/lib/statusCache';
 
@@ -14,6 +14,16 @@ export async function GET(
   const court = COURTS.find((c) => c.id === id);
   if (!court) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Courts that block external/cloud IPs — skip checking
+  if (court.restricted) {
+    return NextResponse.json({
+      id,
+      status: CourtStatus.RESTRICTED,
+      message: 'Acesso restrito a IPs externos',
+      lastChecked: null,
+    });
   }
 
   const result = await checkCourt(court.url);

@@ -10,6 +10,14 @@ const cache = new Map<string, CacheEntry>();
 
 export function getCachedStatuses(): CourtWithStatus[] {
   return COURTS.map((court) => {
+    if (court.restricted) {
+      return {
+        ...court,
+        currentStatus: CourtStatus.RESTRICTED,
+        lastChecked: undefined,
+        statusMessage: 'Acesso restrito a IPs externos',
+      };
+    }
     const entry = cache.get(court.id);
     return {
       ...court,

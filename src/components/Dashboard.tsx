@@ -61,7 +61,9 @@ export default function Dashboard() {
     let done = 0;
     await Promise.allSettled(
       current.map(async (court) => {
-        await checkSingle(court.id);
+        if (!court.restricted) {
+          await checkSingle(court.id);
+        }
         done += 1;
         setProgress({ done, total: current.length });
       })
