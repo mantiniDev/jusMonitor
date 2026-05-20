@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CourtWithStatus, CourtStatus } from '@/lib/courts';
 import CourtCard from './CourtCard';
-import StatsBar from './StatsBar';
-import FilterBar, { GroupFilter, StatusFilter, SystemFilter } from './FilterBar';
+import StatsBar, { StatusFilter } from './StatsBar';
+import FilterBar, { GroupFilter, SystemFilter } from './FilterBar';
 
 const AUTO_REFRESH_INTERVAL = 30 * 60 * 1000;
 
@@ -171,14 +171,16 @@ export default function Dashboard() {
         </div>
       )}
 
-      <StatsBar courts={courts} />
+      <StatsBar
+        courts={courts}
+        activeFilter={statusFilter}
+        onStatusFilter={setStatusFilter}
+      />
 
       <FilterBar
         groupFilter={groupFilter}
-        statusFilter={statusFilter}
         systemFilter={systemFilter}
         onGroupChange={setGroupFilter}
-        onStatusChange={setStatusFilter}
         onSystemChange={setSystemFilter}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}

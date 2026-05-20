@@ -1,15 +1,12 @@
-import { CourtGroup, CourtStatus, CourtSystem, GROUP_LABELS } from '@/lib/courts';
+import { CourtGroup, CourtSystem, GROUP_LABELS } from '@/lib/courts';
 
-export type StatusFilter = CourtStatus | 'ALL';
 export type GroupFilter = CourtGroup | 'ALL';
 export type SystemFilter = CourtSystem | 'ALL';
 
 interface Props {
   groupFilter: GroupFilter;
-  statusFilter: StatusFilter;
   systemFilter: SystemFilter;
   onGroupChange: (g: GroupFilter) => void;
-  onStatusChange: (s: StatusFilter) => void;
   onSystemChange: (s: SystemFilter) => void;
   searchTerm: string;
   onSearchChange: (s: string) => void;
@@ -24,14 +21,6 @@ const GROUP_OPTIONS: { value: GroupFilter; label: string }[] = [
   { value: 'TRE',      label: 'TREs' },
 ];
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'ALL',                       label: 'Todos os status' },
-  { value: CourtStatus.AVAILABLE,       label: 'Disponíveis' },
-  { value: CourtStatus.UNAVAILABLE,     label: 'Indisponíveis' },
-  { value: CourtStatus.ERROR,           label: 'Com erro' },
-  { value: CourtStatus.UNKNOWN,         label: 'Não verificados' },
-];
-
 const SYSTEM_OPTIONS: { value: SystemFilter; label: string }[] = [
   { value: 'ALL',      label: 'Todos os sistemas' },
   { value: 'PJe',      label: 'PJe' },
@@ -42,8 +31,8 @@ const SYSTEM_OPTIONS: { value: SystemFilter; label: string }[] = [
 ];
 
 export default function FilterBar({
-  groupFilter, statusFilter, systemFilter,
-  onGroupChange, onStatusChange, onSystemChange,
+  groupFilter, systemFilter,
+  onGroupChange, onSystemChange,
   searchTerm, onSearchChange,
 }: Props) {
   return (
@@ -64,17 +53,6 @@ export default function FilterBar({
           </button>
         ))}
       </div>
-
-      {/* Status filter */}
-      <select
-        value={statusFilter}
-        onChange={(e) => onStatusChange(e.target.value as StatusFilter)}
-        className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {STATUS_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
 
       {/* System filter */}
       <select
