@@ -17,12 +17,19 @@ export async function checkCourt(url: string): Promise<{ status: CourtStatus; me
 
     const s = response.status;
 
+    // 2xx, 3xx → disponível
     if (s < 400) {
       return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — sistema respondendo` };
     }
+    // 401, 403 → requer autenticação, sistema no ar
     if (s === 401 || s === 403) {
       return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — autenticação necessária (sistema no ar)` };
     }
+    // 400, 405, 406 → servidor respondendo, só a URL/método precisa ajuste
+    if (s === 400 || s === 405 || s === 406) {
+      return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — servidor respondendo` };
+    }
+    // 5xx → sistema com erro ou em manutenção
     if (s >= 500) {
       return { status: CourtStatus.UNAVAILABLE, message: `HTTP ${s} — sistema com erro/manutenção` };
     }
