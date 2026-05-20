@@ -220,8 +220,8 @@ export const COURTS: Court[] = [
   c('j52', 'TJSP',  'eSAJ',   '1G',     'https://esaj.tjsp.jus.br/sajcas/login?service=https%3A%2F%2Fesaj.tjsp.jus.br%2Fesaj%2Fj_spring_cas_security_check','TJ'),
   c('j53', 'TJSP',  'eProc',  '1G',     'https://eproc1g.tjsp.jus.br/eproc/',                                                                              'TJ'),
   c('j54', 'TJSP',  'eProc',  '2G',     'https://eproc2g.tjsp.jus.br/eproc/',                                                                              'TJ'),
-  c('j55', 'TJTO',  'eProc',  '1G',     'https://eproc1.tjto.jus.br/eprocV2_prod_1grau/externo_controlador.php?acao=advogado_cadastrar',                    'TJ'),
-  c('j56', 'TJTO',  'eProc',  '2G',     'https://eproc2.tjto.jus.br/eprocV2_prod_2grau/',                                                                  'TJ'),
+  c('j55', 'TJTO',  'eProc',  '1G',     'https://eproc1.tjto.jus.br/eprocV2_prod_1grau/externo_controlador.php?acao=principal',                           'TJ'),
+  c('j56', 'TJTO',  'eProc',  '2G',     'https://eproc2.tjto.jus.br/eprocV2_prod_2grau/externo_controlador.php?acao=principal',                            'TJ'),
 ];
 
 export const GROUP_LABELS: Record<CourtGroup, string> = {
