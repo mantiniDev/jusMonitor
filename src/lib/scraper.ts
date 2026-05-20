@@ -2,7 +2,7 @@ import { CourtStatus } from './courts';
 
 export async function checkCourt(url: string): Promise<{ status: CourtStatus; message: string }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 9000);
 
   try {
     const response = await fetch(url, {
@@ -31,7 +31,7 @@ export async function checkCourt(url: string): Promise<{ status: CourtStatus; me
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes('abort') || message.toLowerCase().includes('timeout')) {
-      return { status: CourtStatus.ERROR, message: 'Timeout: sem resposta em 8s' };
+      return { status: CourtStatus.ERROR, message: 'Timeout: sem resposta em 9s' };
     }
     if (message.includes('SSL') || message.includes('certificate') || message.includes('CERT')) {
       return { status: CourtStatus.ERROR, message: 'Erro de certificado SSL' };

@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [courts, setCourts] = useState<CourtWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL');
@@ -19,6 +20,10 @@ export default function Dashboard() {
   const [systemFilter, setSystemFilter] = useState<SystemFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const autoRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const courtsRef = useRef<CourtWithStatus[]>([]);
+
+  // Keep ref in sync for use inside callbacks
+  useEffect(() => { courtsRef.current = courts; }, [courts]);
 
   const loadStatus = useCallback(async () => {
     const res = await fetch('/api/status');
@@ -28,38 +33,51 @@ export default function Dashboard() {
     setLastUpdated(data.timestamp);
   }, []);
 
+  // Checks a single court via its own serverless function (no shared timeout)
+  const checkSingle = useCallback(async (id: string) => {
+    const res = await fetch(`/api/check/${id}`).catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json();
+    setCourts((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, currentStatus: data.status, statusMessage: data.message, lastChecked: data.lastChecked }
+          : c
+      )
+    );
+  }, []);
+
   const refreshAll = useCallback(async () => {
     if (refreshing) return;
+    const current = courtsRef.current;
+    if (current.length === 0) return;
+
     setRefreshing(true);
-    try {
-      const res = await fetch('/api/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [] }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setCourts(data.courts);
-      setLastUpdated(data.timestamp);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshing]);
+    setProgress({ done: 0, total: current.length });
+
+    // Mark all as CHECKING immediately
+    setCourts((prev) => prev.map((c) => ({ ...c, currentStatus: CourtStatus.CHECKING })));
+
+    let done = 0;
+    await Promise.allSettled(
+      current.map(async (court) => {
+        await checkSingle(court.id);
+        done += 1;
+        setProgress({ done, total: current.length });
+      })
+    );
+
+    setLastUpdated(new Date().toISOString());
+    setRefreshing(false);
+    setProgress(null);
+  }, [refreshing, checkSingle]);
 
   const refreshOne = useCallback(async (id: string) => {
     setCourts((prev) =>
       prev.map((c) => c.id === id ? { ...c, currentStatus: CourtStatus.CHECKING } : c)
     );
-    const res = await fetch('/api/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [id] }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    setCourts(data.courts);
-    setLastUpdated(data.timestamp);
-  }, []);
+    await checkSingle(id);
+  }, [checkSingle]);
 
   useEffect(() => {
     loadStatus().finally(() => setLoading(false));
@@ -110,9 +128,14 @@ export default function Dashboard() {
             {courts.length} sistemas monitorados — PJe, eProc, eSAJ, Projudi
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {formattedLastUpdated && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {formattedLastUpdated && !refreshing && (
             <span className="text-xs text-gray-400">Atualizado: {formattedLastUpdated}</span>
+          )}
+          {refreshing && progress && (
+            <span className="text-xs text-blue-600 font-medium">
+              {progress.done}/{progress.total} verificados
+            </span>
           )}
           <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
             <input
@@ -128,10 +151,23 @@ export default function Dashboard() {
             disabled={refreshing}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            {refreshing ? <><span className="animate-spin inline-block">↻</span> Verificando...</> : <>↻ Verificar Todos</>}
+            {refreshing
+              ? <><span className="animate-spin inline-block">↻</span> Verificando...</>
+              : <>↻ Verificar Todos</>
+            }
           </button>
         </div>
       </div>
+
+      {/* Progress bar */}
+      {refreshing && progress && (
+        <div className="w-full bg-gray-100 rounded-full h-1.5">
+          <div
+            className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${(progress.done / progress.total) * 100}%` }}
+          />
+        </div>
+      )}
 
       <StatsBar courts={courts} />
 
