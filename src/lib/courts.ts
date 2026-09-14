@@ -5,6 +5,10 @@ export enum CourtStatus {
   ERROR = 'ERROR',
   UNKNOWN = 'UNKNOWN',
   RESTRICTED = 'RESTRICTED', // Acesso restrito a rede interna / bloqueio de IP externo
+  /** Respondeu, mas a tela esperada não carregou — não dá para coletar. */
+  DEGRADED = 'DEGRADED',
+  /** WAF/bot-block barrou nosso acesso. Falha nossa, não do tribunal. */
+  BLOCKED = 'BLOCKED',
 }
 
 export type CourtGroup = 'SUPERIOR' | 'TRF' | 'TJ' | 'TRT' | 'TRE';
