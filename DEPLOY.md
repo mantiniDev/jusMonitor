@@ -23,6 +23,12 @@ turso db tokens create jusmonitor
 
 O schema é criado sozinho na primeira conexão.
 
+Sem WSL no Windows, o CLI não roda: use o painel em https://turso.tech, que
+faz o mesmo (criar banco, ver a URL, gerar token). Alternativa: a integração do
+Turso pelo Marketplace do Vercel, na aba *Storage* do projeto — ela provisiona o
+banco e injeta `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`, nomes que o código
+também aceita.
+
 ### 2. Configurar as variáveis no Vercel
 
 Em *Settings → Environment Variables*:
@@ -32,6 +38,10 @@ Em *Settings → Environment Variables*:
 | `LIBSQL_URL` | `libsql://...turso.io` |
 | `LIBSQL_AUTH_TOKEN` | token gerado acima |
 | `SWEEP_TOKEN` | segredo à sua escolha |
+
+Marque as três para *Production* e *Preview*. Pela integração do Marketplace os
+nomes injetados são `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`; ambos os pares
+funcionam, não é preciso duplicar.
 
 `SWEEP_TOKEN` protege as rotas de varredura. Elas disparam centenas de
 requisições aos tribunais em nome da instituição: expostas sem proteção numa URL
