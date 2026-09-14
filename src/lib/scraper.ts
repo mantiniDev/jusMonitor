@@ -1,5 +1,5 @@
 import { CourtStatus, type CourtSystem } from './courts';
-import { evaluateBody, MAX_BODY_BYTES, type ProbeVerdict } from './probes';
+import { evaluateBody, MAX_BODY_BYTES, type ProbeVerdict, type ProbeEvaluation } from './probes';
 
 export interface CheckResult {
   status: CourtStatus;
@@ -40,6 +40,70 @@ async function readBounded(response: Response): Promise<string> {
 }
 
 /**
+ * Decide o estado a partir do código HTTP e do veredito do corpo.
+ *
+ * Separada do `fetch` porque é a peça mais crítica do sistema: é aqui que se
+ * decide se uma resposta vira "queda do tribunal" — e, por consequência, se
+ * pode virar certidão. Pura, para ser testável sem rede.
+ *
+ * O princípio que governa a ordem: **na dúvida, a culpa é nossa**. Atribuir ao
+ * tribunal uma indisponibilidade que não houve produz prova falsa; atribuir a
+ * nós uma queda real só nos custa um alerta a investigar.
+ */
+export function classificarResposta(
+  s: number,
+  { verdict, matched }: ProbeEvaluation,
+  system: CourtSystem
+): { status: CourtStatus; message: string; verdict: ProbeVerdict } {
+  // 1. Bloqueio nosso vem primeiro: não observamos o tribunal, observamos a
+  //    nossa própria barreira.
+  if (verdict === 'BLOCKED') {
+    return { status: CourtStatus.BLOCKED, message: `Bloqueio de acesso — ${matched}`, verdict };
+  }
+
+  // 2. Manutenção declarada, venha com o código que vier.
+  if (verdict === 'MAINTENANCE') {
+    return { status: CourtStatus.UNAVAILABLE, message: `Indisponível — ${matched} (HTTP ${s})`, verdict };
+  }
+
+  // 3. 5xx → o servidor do tribunal falhou ao processar. Sinal inequívoco.
+  if (s >= 500) {
+    return { status: CourtStatus.UNAVAILABLE, message: `HTTP ${s} — sistema com erro/manutenção`, verdict };
+  }
+
+  // 4. Parede de autenticação: só conta como "no ar" se a tela do sistema veio
+  //    junto. Um 401/403 com corpo irreconhecível é quase sempre WAF de borda
+  //    barrando a gente, e dar isso como disponível seria o pior erro possível
+  //    — um falso "operante" durante janela que pode ser de prazo.
+  if (s === 401 || s === 403) {
+    return verdict === 'FUNCTIONAL'
+      ? { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — autenticação necessária (${system} no ar)`, verdict }
+      : { status: CourtStatus.BLOCKED, message: `HTTP ${s} — acesso barrado sem a tela do ${system}`, verdict: 'BLOCKED' };
+  }
+
+  // 5. Erro de requisição: o servidor recusou o FORMATO do que pedimos, o que
+  //    fala da nossa borda, não da saúde do tribunal. Vários tribunais
+  //    respondem assim apenas a IP de datacenter, servindo a página normal a um
+  //    navegador comum — observado em TRT23 e TJSE a partir do Vercel enquanto
+  //    ambos estavam no ar. Tratar como queda geraria certidão de fato inexistente.
+  if (s === 400 || s === 405 || s === 406) {
+    return verdict === 'FUNCTIONAL'
+      ? { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — ${system} respondendo`, verdict }
+      : { status: CourtStatus.BLOCKED, message: `HTTP ${s} — requisição recusada sem a tela do ${system}`, verdict: 'BLOCKED' };
+  }
+
+  // 6. Respondeu 2xx/3xx, mas a tela esperada não carregou: não dá para coletar.
+  if (verdict === 'UNEXPECTED') {
+    return { status: CourtStatus.DEGRADED, message: `HTTP ${s} — respondeu sem a tela esperada do ${system}`, verdict };
+  }
+
+  if (s < 400) {
+    return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — ${system} operante`, verdict };
+  }
+  return { status: CourtStatus.ERROR, message: `HTTP ${s}`, verdict };
+}
+
+/**
  * Sondagem funcional de um endpoint.
  *
  * Não basta o código HTTP: um PJe em manutenção devolve 200 com uma página de
@@ -66,48 +130,10 @@ export async function checkCourt(url: string, system: CourtSystem): Promise<Chec
     const s = response.status;
     const body = await readBounded(response);
     const latencyMs = elapsed();
-    const { verdict, matched } = evaluateBody(system, body);
+    const avaliacao = evaluateBody(system, body);
+    const decidido = classificarResposta(s, avaliacao, system);
 
-    // 1. Bloqueio nosso vem primeiro: não observamos o tribunal, observamos
-    //    a nossa própria barreira. Atribuir isso ao tribunal seria falso.
-    if (verdict === 'BLOCKED') {
-      return { status: CourtStatus.BLOCKED, message: `Bloqueio de acesso — ${matched}`, httpStatus: s, latencyMs, verdict };
-    }
-
-    // 2. Manutenção declarada, venha com o código que vier.
-    if (verdict === 'MAINTENANCE') {
-      return { status: CourtStatus.UNAVAILABLE, message: `Indisponível — ${matched} (HTTP ${s})`, httpStatus: s, latencyMs, verdict };
-    }
-
-    // 3. 5xx → tribunal com erro.
-    if (s >= 500) {
-      return { status: CourtStatus.UNAVAILABLE, message: `HTTP ${s} — sistema com erro/manutenção`, httpStatus: s, latencyMs, verdict };
-    }
-
-    // 4. Parede de autenticação: só conta como "no ar" se a tela do sistema
-    //    veio junto. Um 403 com corpo irreconhecível é quase sempre WAF de
-    //    borda barrando a gente — e dar isso como disponível seria o pior erro
-    //    possível: um falso "operante" durante uma janela que pode ser de prazo.
-    //    Na dúvida, atribuímos a nós (BLOCKED), nunca ao tribunal.
-    if (s === 401 || s === 403) {
-      if (verdict === 'FUNCTIONAL') {
-        return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — autenticação necessária (${system} no ar)`, httpStatus: s, latencyMs, verdict };
-      }
-      return { status: CourtStatus.BLOCKED, message: `HTTP ${s} — acesso barrado sem a tela do ${system}`, httpStatus: s, latencyMs, verdict: 'BLOCKED' };
-    }
-
-    // 5. Respondeu, mas a tela esperada não carregou: não dá para coletar.
-    if (verdict === 'UNEXPECTED') {
-      return { status: CourtStatus.DEGRADED, message: `HTTP ${s} — respondeu sem a tela esperada do ${system}`, httpStatus: s, latencyMs, verdict };
-    }
-
-    if (s < 400) {
-      return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — ${system} operante`, httpStatus: s, latencyMs, verdict };
-    }
-    if (s === 400 || s === 405 || s === 406) {
-      return { status: CourtStatus.AVAILABLE, message: `HTTP ${s} — servidor respondendo`, httpStatus: s, latencyMs, verdict };
-    }
-    return { status: CourtStatus.ERROR, message: `HTTP ${s}`, httpStatus: s, latencyMs, verdict };
+    return { ...decidido, httpStatus: s, latencyMs };
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

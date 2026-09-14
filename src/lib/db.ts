@@ -21,10 +21,20 @@ export class BancoIndisponivel extends Error {
 
 const LOCAL_PATH = path.join(process.cwd(), 'data', 'jusmonitor.db');
 
+/**
+ * Aceita os dois nomes em uso: LIBSQL_* quando as variáveis são configuradas à
+ * mão, e TURSO_* quando vêm da integração do Turso no Marketplace do Vercel.
+ * Exigir só um deles faria a integração oficial falhar em silêncio.
+ */
 function resolverUrl(): string {
-  if (process.env.LIBSQL_URL) return process.env.LIBSQL_URL;
+  const remoto = process.env.LIBSQL_URL ?? process.env.TURSO_DATABASE_URL;
+  if (remoto) return remoto;
   if (process.env.JUSMONITOR_DB_PATH) return `file:${path.resolve(process.env.JUSMONITOR_DB_PATH)}`;
   return `file:${LOCAL_PATH}`;
+}
+
+function resolverToken(): string | undefined {
+  return process.env.LIBSQL_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
 }
 
 /** Só faz sentido em arquivo local; no Turso a durabilidade é do serviço. */
@@ -133,13 +143,14 @@ async function abrir(): Promise<Client> {
       // sintoma seria um 500 opaco em toda rota que toca o banco.
       throw new BancoIndisponivel(
         'Não há banco gravável. Em hospedagem serverless o disco é somente leitura: ' +
-          'defina LIBSQL_URL e LIBSQL_AUTH_TOKEN apontando para um banco libSQL/Turso. ' +
+          'defina LIBSQL_URL e LIBSQL_AUTH_TOKEN (ou TURSO_DATABASE_URL e TURSO_AUTH_TOKEN, ' +
+          'se estiver usando a integração do Turso no Vercel) apontando para um banco libSQL. ' +
           `Detalhe: ${e instanceof Error ? e.message : String(e)}`
       );
     }
   }
 
-  const client = createClient({ url, authToken: process.env.LIBSQL_AUTH_TOKEN });
+  const client = createClient({ url, authToken: resolverToken() });
 
   // PRAGMA não se aplica ao Turso remoto e faria a conexão falhar à toa.
   if (url.startsWith('file:')) {

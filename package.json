@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:ledger": "tsx src/lib/incidents.test.ts",
     "test:probes": "tsx src/lib/probes.test.ts",
+    "test:scraper": "tsx src/lib/scraper.test.ts",
     "test:certidao": "tsx src/lib/certidao.test.ts",
     "test:avisos": "tsx src/lib/avisos.test.ts"
   },
