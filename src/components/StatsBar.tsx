@@ -13,6 +13,8 @@ export default function StatsBar({ courts, activeFilter, onStatusFilter }: Props
     total:      courts.length,
     available:  courts.filter((c) => c.currentStatus === CourtStatus.AVAILABLE).length,
     unavailable:courts.filter((c) => c.currentStatus === CourtStatus.UNAVAILABLE).length,
+    degraded:   courts.filter((c) => c.currentStatus === CourtStatus.DEGRADED).length,
+    blocked:    courts.filter((c) => c.currentStatus === CourtStatus.BLOCKED).length,
     error:      courts.filter((c) => c.currentStatus === CourtStatus.ERROR).length,
     checking:   courts.filter((c) => c.currentStatus === CourtStatus.CHECKING).length,
     unknown:    courts.filter((c) => c.currentStatus === CourtStatus.UNKNOWN).length,
@@ -31,6 +33,8 @@ export default function StatsBar({ courts, activeFilter, onStatusFilter }: Props
     { filter: 'ALL',                    label: 'Total',           value: counts.total,       bg: 'bg-gray-50',    bgActive: 'bg-gray-200',   text: 'text-gray-700',  ring: 'ring-gray-400' },
     { filter: CourtStatus.AVAILABLE,    label: 'Disponíveis',     value: counts.available,   bg: 'bg-green-50',   bgActive: 'bg-green-200',  text: 'text-green-700', ring: 'ring-green-500' },
     { filter: CourtStatus.UNAVAILABLE,  label: 'Indisponíveis',   value: counts.unavailable, bg: 'bg-red-50',     bgActive: 'bg-red-200',    text: 'text-red-700',   ring: 'ring-red-500' },
+    { filter: CourtStatus.DEGRADED,     label: 'Degradados',      value: counts.degraded,    bg: 'bg-orange-50',  bgActive: 'bg-orange-200', text: 'text-orange-700',ring: 'ring-orange-500' },
+    { filter: CourtStatus.BLOCKED,      label: '🚧 Bloqueio nosso', value: counts.blocked,   bg: 'bg-purple-50',  bgActive: 'bg-purple-200', text: 'text-purple-700',ring: 'ring-purple-500' },
     { filter: CourtStatus.ERROR,        label: 'Com erro',        value: counts.error,       bg: 'bg-amber-50',   bgActive: 'bg-amber-200',  text: 'text-amber-700', ring: 'ring-amber-500' },
     { filter: CourtStatus.CHECKING,     label: 'Verificando',     value: counts.checking,    bg: 'bg-blue-50',    bgActive: 'bg-blue-200',   text: 'text-blue-700',  ring: 'ring-blue-500' },
     { filter: CourtStatus.UNKNOWN,      label: 'Não verificados', value: counts.unknown,     bg: 'bg-gray-50',    bgActive: 'bg-gray-200',   text: 'text-gray-500',  ring: 'ring-gray-400' },
@@ -38,7 +42,7 @@ export default function StatsBar({ courts, activeFilter, onStatusFilter }: Props
   ];
 
   return (
-    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+    <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
       {stats.map((s) => {
         const isActive = activeFilter === s.filter;
         return (

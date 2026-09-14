@@ -1,0 +1,43 @@
+name: Varredura periódica
+
+# O cron do Vercel no plano Hobby roda no máximo uma vez por dia, o que não
+# serve para monitoramento on-call. O agendador do GitHub Actions é gratuito e
+# permite a cadência que o produto exige.
+on:
+  schedule:
+    # Sondagem dos endpoints a cada 15 minutos.
+    - cron: '*/15 * * * *'
+    # Consulta às páginas oficiais de aviso, de hora em hora.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sondagem:
+    # O agendamento de 15 min dispara a sondagem; o de hora em hora, os avisos.
+    if: github.event.schedule != '7 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Varrer endpoints dos tribunais
+        run: |
+          codigo=$(curl -s -o /tmp/saida.json -w '%{http_code}' \
+            -X POST "${{ secrets.APP_URL }}/api/monitor/sweep" \
+            -H "Authorization: Bearer ${{ secrets.SWEEP_TOKEN }}" \
+            --max-time 600)
+          echo "HTTP $codigo"
+          cat /tmp/saida.json
+          # Falha explícita para que o histórico do Actions mostre o problema.
+          test "$codigo" = "200"
+
+  avisos:
+    if: github.event.schedule == '7 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar páginas oficiais e correlacionar
+        run: |
+          codigo=$(curl -s -o /tmp/saida.json -w '%{http_code}' \
+            -X POST "${{ secrets.APP_URL }}/api/avisos" \
+            -H "Authorization: Bearer ${{ secrets.SWEEP_TOKEN }}" \
+            --max-time 600)
+          echo "HTTP $codigo"
+          cat /tmp/saida.json
+          test "$codigo" = "200"

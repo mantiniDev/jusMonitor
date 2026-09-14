@@ -19,6 +19,9 @@
 # misc
 .DS_Store
 *.pem
+
+# ledger de incidentes (SQLite)
+/data
 .env
 .env*.local
 
@@ -28,3 +31,7 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ambiente local
+.env
+.env.local

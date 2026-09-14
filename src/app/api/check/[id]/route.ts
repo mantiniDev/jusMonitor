@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { COURTS, CourtStatus } from '@/lib/courts';
 import { checkCourt } from '@/lib/scraper';
 import { updateCachedStatus } from '@/lib/statusCache';
+import { recordCheck } from '@/lib/incidents';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 10;
@@ -26,9 +27,22 @@ export async function GET(
     });
   }
 
-  const result = await checkCourt(court.url);
-  const lastChecked = new Date().toISOString();
+  const result = await checkCourt(court.url, court.system);
+  const at = new Date();
+  const lastChecked = at.toISOString();
+
+  // Toda observação vai para o ledger, não só as da varredura — uma checagem
+  // manual durante um incidente é evidência tão válida quanto as automáticas.
+  const outcome = await recordCheck(id, result, at);
   updateCachedStatus(id, result.status, result.message, lastChecked);
 
-  return NextResponse.json({ id, status: result.status, message: result.message, lastChecked });
+  return NextResponse.json({
+    id,
+    status: result.status,
+    message: result.message,
+    latencyMs: result.latencyMs,
+    lastChecked,
+    incidentOpened: outcome.opened ?? null,
+    incidentClosed: outcome.closed ?? null,
+  });
 }

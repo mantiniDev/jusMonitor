@@ -7,6 +7,8 @@ const CONFIG: Record<CourtStatus, { label: string; classes: string; dot: string 
   [CourtStatus.ERROR]:       { label: 'Erro de acesso',    classes: 'bg-amber-100 text-amber-800',  dot: 'bg-amber-500' },
   [CourtStatus.UNKNOWN]:     { label: 'Não verificado',    classes: 'bg-gray-100 text-gray-600',    dot: 'bg-gray-400' },
   [CourtStatus.RESTRICTED]:  { label: '🔒 Acesso restrito', classes: 'bg-gray-100 text-gray-500',   dot: 'bg-gray-400' },
+  [CourtStatus.DEGRADED]:    { label: 'Degradado',         classes: 'bg-orange-100 text-orange-800', dot: 'bg-orange-500' },
+  [CourtStatus.BLOCKED]:     { label: '🚧 Bloqueio nosso',  classes: 'bg-purple-100 text-purple-800', dot: 'bg-purple-500' },
 };
 
 interface Props {

@@ -13,6 +13,8 @@ const BORDER_COLOR: Record<CourtStatus, string> = {
   [CourtStatus.ERROR]:       'border-amber-200',
   [CourtStatus.UNKNOWN]:     'border-gray-200',
   [CourtStatus.RESTRICTED]:  'border-gray-200',
+  [CourtStatus.DEGRADED]:    'border-orange-300',
+  [CourtStatus.BLOCKED]:     'border-purple-300',
 };
 
 export default function CourtCard({ court, onRefresh }: Props) {
