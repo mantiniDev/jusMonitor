@@ -124,12 +124,10 @@ export default function Dashboard() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Monitor de Sistemas Judiciais</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {courts.length} sistemas monitorados — PJe, eProc, eSAJ, Projudi
-          </p>
-        </div>
+        <p className="text-sm text-gray-500 max-w-2xl">
+          O que a sondagem <strong className="text-gray-700">mede</strong> agora nos {courts.length} endpoints
+          de acesso — PJe, eProc, eSAJ, Projudi.
+        </p>
         <div className="flex items-center gap-3 flex-wrap">
           {formattedLastUpdated && !refreshing && (
             <span className="text-xs text-gray-400">Atualizado: {formattedLastUpdated}</span>
