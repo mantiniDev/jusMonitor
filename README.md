@@ -170,19 +170,6 @@ src/app/api/
 
 ## Fora de escopo
 
-**Certidão sem assinatura digital.** O hash prova integridade contra alteração,
-não prova origem. Para valor probatório mais forte diante de um juízo
-contestador, faltaria assinatura ICP-Brasil ou carimbo de tempo.
-
-**Sem endpoint de conferência.** Quem recebe a certidão não tem onde validar o
-hash.
-
 **Catálogo de avisos parcial.** Doze fontes verificadas. De uma lista inicial de
 63 endereços, 41 davam 404 e sete apontavam para consulta processual em vez de
 página de avisos; entraram apenas os que respondem e trazem o conteúdo esperado.
-
-**Sem camada de prazo.** Cruzar incidente com o processo e o prazo do cliente é a
-peça que fecha a proposta, e depende de dado que este repositório não tem.
-
-**Sem corroboração de segundo ponto.** É o que permitiria promover um timeout de
-`INDETERMINADA` a indisponibilidade atestável.
