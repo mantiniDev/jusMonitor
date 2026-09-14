@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listIncidents, listCourtStates, type Incident } from '@/lib/incidents';
+import { listIncidents, listCourtStates, type Incident , atestavel } from '@/lib/incidents';
 import { COURTS, CourtStatus } from '@/lib/courts';
 import { BancoIndisponivel } from '@/lib/db';
 
@@ -21,7 +21,7 @@ function enrich(i: Incident, agora: number) {
       Math.round(((i.ended_at ? new Date(i.ended_at).getTime() : agora) - new Date(i.started_at).getTime()) / 60000)
     ),
     // Falha interna não atesta nada sobre o tribunal.
-    certidaoDisponivel: i.kind !== 'INTERNA',
+    certidaoDisponivel: atestavel(i.kind),
   };
 }
 
@@ -55,7 +55,7 @@ async function montar(req: NextRequest) {
   const monitorados = COURTS.filter((c) => !c.restricted).length;
 
   // Endpoints em incidente externo aberto — é o número que interessa ao on-call.
-  const comIncidenteAberto = new Set(abertos.filter((i) => i.kind !== 'INTERNA').map((i) => i.court_id));
+  const comIncidenteAberto = new Set(abertos.filter((i) => atestavel(i.kind)).map((i) => i.court_id));
   const emIncidente = comIncidenteAberto.size;
 
   // Operante exige as duas coisas: última observação boa E nenhum incidente
@@ -65,6 +65,7 @@ async function montar(req: NextRequest) {
     (e) => e.last_status === CourtStatus.AVAILABLE && !comIncidenteAberto.has(e.court_id)
   ).length;
   const bloqueiosInternos = abertos.filter((i) => i.kind === 'INTERNA').length;
+  const naoCorroborados = abertos.filter((i) => i.kind === 'INDETERMINADA').length;
 
   const minutosIndisponiveis = historico.reduce((s, i) => s + i.duracaoMin, 0);
 
@@ -79,6 +80,7 @@ async function montar(req: NextRequest) {
       operantes,
       emIncidente,
       bloqueiosInternos,
+      naoCorroborados,
       incidentesPeriodo: historico.length,
       minutosIndisponiveis,
     },

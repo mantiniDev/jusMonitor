@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listIncidents } from '@/lib/incidents';
+import { listIncidents , atestavel } from '@/lib/incidents';
 import { COURTS } from '@/lib/courts';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
         : Date.now() - new Date(i.started_at).getTime(),
       // Falha interna não atesta nada sobre o tribunal: a UI não deve
       // oferecer o botão de certidão só para receber 409 de volta.
-      certidaoDisponivel: i.kind !== 'INTERNA',
+      certidaoDisponivel: atestavel(i.kind),
     };
   });
 
