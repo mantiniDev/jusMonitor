@@ -6,7 +6,7 @@ import { avisosDoIncidente, type AvisoVinculado } from './correlacao';
 /** Prazos processuais correm em horário de Brasília — a certidão não pode exibir UTC. */
 export const FUSO = 'America/Sao_Paulo';
 
-export type RecusaMotivo = 'NAO_ENCONTRADO' | 'FALHA_INTERNA';
+export type RecusaMotivo = 'NAO_ENCONTRADO' | 'FALHA_INTERNA' | 'NAO_CORROBORADA';
 
 export class CertidaoRecusada extends Error {
   constructor(readonly motivo: RecusaMotivo, mensagem: string) {
@@ -100,6 +100,16 @@ export async function emitirCertidao(incidenteId: number): Promise<Certidao> {
       'FALHA_INTERNA',
       'Incidente classificado como falha interna do monitoramento (bloqueio de acesso ou rede). ' +
         'Não há atestado de indisponibilidade do tribunal a emitir.'
+    );
+  }
+
+  if (incidente.kind === 'INDETERMINADA') {
+    throw new CertidaoRecusada(
+      'NAO_CORROBORADA',
+      'Incidente registrado a partir de falha sem resposta (tempo esgotado, DNS ou TLS). ' +
+        'De um único ponto de observação não é possível distinguir indisponibilidade do tribunal ' +
+        'de falha no caminho de rede até ele, e atestar a primeira hipótese sem corroboração ' +
+        'produziria prova de fato não estabelecido.'
     );
   }
 

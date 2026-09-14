@@ -14,9 +14,29 @@ export const CONFIRM_RECOVERIES = 2;
 
 export type IncidentKind =
   | 'EXTERNA_BLOQUEANTE' // tribunal fora do ar: conexão recusada, 5xx
-  | 'EXTERNA'            // instabilidade: timeout, SSL, DNS, tela não carregou
-  | 'INTERNA'            // falha nossa: WAF barrou, rede caiu
-  | 'PROGRAMADA';        // manutenção anunciada pelo próprio tribunal
+  | 'EXTERNA'            // instabilidade do tribunal: tela não carregou
+  | 'PROGRAMADA'         // manutenção anunciada pelo próprio tribunal
+  | 'INDETERMINADA'      // timeout/DNS/TLS: de um ponto só não dá para saber de quem é
+  | 'INTERNA';           // falha nossa: WAF barrou, rede caiu
+
+/**
+ * Quanto menos sabemos de quem é a culpa, maior o grau. Um incidente aberto só
+ * caminha para cima — nunca de volta. Descobrir que a falha é nossa retira a
+ * certidão; o contrário, promover a culpa ao tribunal a partir de uma
+ * observação ambígua, criaria prova de um fato não estabelecido.
+ */
+const GRAU: Record<IncidentKind, number> = {
+  EXTERNA_BLOQUEANTE: 0,
+  EXTERNA: 0,
+  PROGRAMADA: 0,
+  INDETERMINADA: 1,
+  INTERNA: 2,
+};
+
+/** Só estes atestam indisponibilidade do tribunal e admitem certidão. */
+export function atestavel(kind: IncidentKind): boolean {
+  return GRAU[kind] === 0;
+}
 
 export interface Incident {
   id: number;
@@ -86,7 +106,13 @@ function classify(status: CourtStatus): IncidentKind {
   switch (status) {
     case CourtStatus.BLOCKED:     return 'INTERNA';
     case CourtStatus.UNAVAILABLE: return 'EXTERNA_BLOQUEANTE';
-    default:                      return 'EXTERNA'; // DEGRADED, ERROR
+    case CourtStatus.DEGRADED:    return 'EXTERNA';
+    // Timeout, DNS e TLS falham igual quando o tribunal cai e quando o caminho
+    // de rede até ele falha. De um único ponto de observação não há como
+    // separar — e a produção mostrou 6 destes num só ciclo, todos contra
+    // tribunais que estavam no ar. Fica registrado, mas não vira certidão
+    // enquanto não houver corroboração de outro ponto.
+    default:                      return 'INDETERMINADA'; // ERROR
   }
 }
 
@@ -208,6 +234,17 @@ export async function recordCheck(
         'UPDATE incidents SET failure_count = failure_count + 1, last_message = ? WHERE id = ?',
         [result.message ?? null, s.open_incident_id]
       );
+
+      // O kind era fixado na abertura e nunca mais revisto: um incidente
+      // classificado errado — ou classificado antes de a regra melhorar —
+      // seguia oferecendo certidão indefinidamente. Agora, se uma observação
+      // posterior revela que a culpa é menos atribuível ao tribunal, o
+      // incidente acompanha. Só nessa direção.
+      const atual = await getIncident(s.open_incident_id);
+      const novo = classify(result.status);
+      if (atual && GRAU[novo] > GRAU[atual.kind]) {
+        await executar('UPDATE incidents SET kind = ? WHERE id = ?', [novo, s.open_incident_id]);
+      }
     } else if (s.fail_streak >= CONFIRM_FAILURES) {
       const startedAt = s.first_fail_at!;
       const info = await executar(

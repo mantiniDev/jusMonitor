@@ -16,6 +16,7 @@ import {
   getEvidence,
   CONFIRM_FAILURES,
   CONFIRM_RECOVERIES,
+  atestavel,
 } from './incidents.ts';
 
 const down = (): CheckResult => ({
@@ -145,15 +146,61 @@ check('nova queda depois de encerrado abre um segundo incidente', async () => {
 });
 
 // ------------------------------------------------------------ classificação
-check('timeout classifica como EXTERNA, não bloqueante', async () => {
+const timeout = (): CheckResult => ({
+  status: CourtStatus.ERROR,
+  message: 'Timeout: sem resposta em 9s',
+  latencyMs: 9000,
+});
+
+check('timeout fica INDETERMINADA: de um ponto so nao se sabe de quem e a culpa', async () => {
   const court = 'kind01';
-  const timeout: CheckResult = {
-    status: CourtStatus.ERROR,
-    message: 'Timeout: sem resposta em 9s',
-    latencyMs: 9000,
-  };
-  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, timeout, t(i));
-  assert.equal((await listIncidents({ courtId: court }))[0].kind, 'EXTERNA');
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, timeout(), t(i));
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'INDETERMINADA');
+  assert.equal(atestavel(inc.kind), false, 'nao pode virar certidao sem corroboracao');
+});
+
+check('tela ausente com 200 segue sendo instabilidade do tribunal', async () => {
+  const court = 'kind02';
+  const degradado = (): CheckResult => ({
+    status: CourtStatus.DEGRADED, message: 'respondeu sem a tela esperada', httpStatus: 200, latencyMs: 300,
+  });
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, degradado(), t(i));
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'EXTERNA');
+  assert.equal(atestavel(inc.kind), true);
+});
+
+// --------------------------------------------------- reclassificacao em curso
+check('incidente aberto e reclassificado quando a culpa se revela nossa', async () => {
+  const court = 'recl01';
+  const queda = (): CheckResult => ({
+    status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
+  });
+  const bloqueio = (): CheckResult => ({
+    status: CourtStatus.BLOCKED, message: 'HTTP 400 — requisicao recusada', httpStatus: 400, latencyMs: 10,
+  });
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, queda(), t(i));
+  assert.equal((await listIncidents({ courtId: court }))[0].kind, 'EXTERNA_BLOQUEANTE');
+
+  await recordCheck(court, bloqueio(), t(CONFIRM_FAILURES));
+  const [depois] = await listIncidents({ courtId: court });
+  assert.equal(depois.kind, 'INTERNA', 'deve seguir a observacao mais recente');
+  assert.equal(atestavel(depois.kind), false, 'deve deixar de oferecer certidao');
+});
+
+check('reclassificacao nao anda para tras', async () => {
+  const court = 'recl02';
+  const bloqueio = (): CheckResult => ({
+    status: CourtStatus.BLOCKED, message: 'WAF', httpStatus: 403, latencyMs: 10,
+  });
+  const queda = (): CheckResult => ({
+    status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
+  });
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, bloqueio(), t(i));
+  await recordCheck(court, queda(), t(CONFIRM_FAILURES));
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'INTERNA', 'culpa nossa ja estabelecida nao vira culpa do tribunal');
 });
 
 check('endpoint restrito não gera observação nem incidente', async () => {

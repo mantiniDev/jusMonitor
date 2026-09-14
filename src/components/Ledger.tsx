@@ -44,6 +44,7 @@ interface LedgerData {
 const KIND_LABEL: Record<string, { texto: string; classes: string }> = {
   EXTERNA_BLOQUEANTE: { texto: 'Indisponibilidade',  classes: 'bg-red-100 text-red-800' },
   EXTERNA:            { texto: 'Instabilidade',      classes: 'bg-amber-100 text-amber-800' },
+  INDETERMINADA:      { texto: 'Não corroborada', classes: 'bg-slate-100 text-slate-700' },
   INTERNA:            { texto: 'Falha nossa',        classes: 'bg-purple-100 text-purple-800' },
   PROGRAMADA:         { texto: 'Programada',         classes: 'bg-blue-100 text-blue-800' },
 };
@@ -125,7 +126,7 @@ function Tabela({ linhas, emCurso }: { linhas: IncidentRow[]; emCurso: boolean }
                     Emitir
                   </a>
                 ) : (
-                  <span className="text-xs text-gray-300" title="Falha atribuída ao nosso monitoramento: não há indisponibilidade do tribunal a atestar.">
+                  <span className="text-xs text-gray-300" title="Sem indisponibilidade do tribunal estabelecida: falha atribuída ao nosso monitoramento, ou sem resposta que permita distinguir queda do tribunal de falha de rede.">
                     indisponível
                   </span>
                 )}

@@ -59,6 +59,17 @@ check('incidente inexistente é recusado', async () => {
   );
 });
 
+check('incidente INDETERMINADA (timeout) e recusado', async () => {
+  const semResposta = (): CheckResult => ({
+    status: CourtStatus.ERROR, message: 'Timeout: sem resposta em 9s', latencyMs: 9000,
+  });
+  const id = await criarIncidente('t31', semResposta, true);
+  await assert.rejects(
+    () => emitirCertidao(id),
+    (e: unknown) => e instanceof CertidaoRecusada && e.motivo === 'NAO_CORROBORADA'
+  );
+});
+
 // ------------------------------------------------------------------ emissão
 check('incidente externo encerrado gera certidão', async () => {
   const id = await criarIncidente('t03', queda, true);
