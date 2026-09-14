@@ -37,10 +37,12 @@ export default function AvisosPanel() {
   const [varrendo, setVarrendo] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [erroConfig, setErroConfig] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     const res = await fetch('/api/avisos').catch(() => null);
-    if (res?.ok) setData(await res.json());
+    if (res?.ok) { setData(await res.json()); setErroConfig(null); return; }
+    if (res?.status === 503) setErroConfig((await res.json()).error ?? null);
   }, []);
 
   useEffect(() => { carregar().finally(() => setLoading(false)); }, [carregar]);
@@ -68,7 +70,14 @@ export default function AvisosPanel() {
   }, [carregar]);
 
   if (loading) return <div className="py-16 text-center text-gray-400">Carregando...</div>;
-  if (!data) return <div className="py-16 text-center text-gray-400">Não foi possível carregar os avisos.</div>;
+  if (!data) {
+    return (
+      <div className="bg-amber-50 border-2 border-amber-200 text-amber-900 text-sm rounded-xl px-4 py-4">
+        <strong className="block mb-1">Avisos indisponíveis</strong>
+        {erroConfig ?? 'Não foi possível carregar os avisos.'}
+      </div>
+    );
+  }
 
   const { resumo } = data;
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listIncidents, listCourtStates, type Incident } from '@/lib/incidents';
 import { COURTS, CourtStatus } from '@/lib/courts';
+import { BancoIndisponivel } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,17 @@ function enrich(i: Incident, agora: number) {
  * para montar uma tela só.
  */
 export async function GET(req: NextRequest) {
+  try {
+    return await montar(req);
+  } catch (e) {
+    if (e instanceof BancoIndisponivel) {
+      return NextResponse.json({ error: e.message, motivo: 'BANCO_NAO_CONFIGURADO' }, { status: 503 });
+    }
+    throw e;
+  }
+}
+
+async function montar(req: NextRequest) {
   const dias = Number(req.nextUrl.searchParams.get('dias') ?? 30);
   const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
   const agora = Date.now();

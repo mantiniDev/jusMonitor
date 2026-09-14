@@ -145,10 +145,13 @@ export default function Ledger() {
   const [dias, setDias] = useState(30);
   const [busca, setBusca] = useState('');
   const [aviso, setAviso] = useState<string | null>(null);
+  const [erroConfig, setErroConfig] = useState<string | null>(null);
 
   const carregar = useCallback(async (d: number) => {
     const res = await fetch(`/api/ledger?dias=${d}`).catch(() => null);
-    if (res?.ok) setData(await res.json());
+    if (res?.ok) { setData(await res.json()); setErroConfig(null); return; }
+    // 503: o banco nao esta configurado. Dizer isso e melhor do que "erro".
+    if (res?.status === 503) setErroConfig((await res.json()).error ?? null);
   }, []);
 
   useEffect(() => {
@@ -183,7 +186,12 @@ export default function Ledger() {
     return <div className="flex items-center justify-center min-h-[400px] text-gray-400">Carregando...</div>;
   }
   if (!data) {
-    return <div className="text-center py-16 text-gray-400">Não foi possível carregar o registro.</div>;
+    return (
+      <div className="bg-amber-50 border-2 border-amber-200 text-amber-900 text-sm rounded-xl px-4 py-4">
+        <strong className="block mb-1">Registro indisponível</strong>
+        {erroConfig ?? 'Não foi possível carregar o registro.'}
+      </div>
+    );
   }
 
   const { resumo } = data;

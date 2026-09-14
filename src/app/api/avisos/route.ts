@@ -2,12 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { varrerAvisos, ultimasCapturas, FONTES_AVISO, type Janela } from '@/lib/avisos';
 import { correlacionar } from '@/lib/correlacao';
 import { autorizado, NAO_AUTORIZADO } from '@/lib/auth';
+import { BancoIndisponivel } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 /** Última captura de cada fonte oficial, com a saúde do catálogo. */
 export async function GET() {
+  try {
+    return await montar();
+  } catch (e) {
+    if (e instanceof BancoIndisponivel) {
+      return NextResponse.json({ error: e.message, motivo: 'BANCO_NAO_CONFIGURADO' }, { status: 503 });
+    }
+    throw e;
+  }
+}
+
+async function montar() {
   const capturas = await ultimasCapturas();
   const porSigla = new Map(capturas.map((c) => [c.acronym, c]));
 

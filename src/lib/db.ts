@@ -11,6 +11,14 @@ import path from 'node:path';
  * hospedado, o ledger não persistiria e a certidão ficaria sem evidência.
  */
 
+/** Erro de configuração, não de programação: merece resposta explicativa. */
+export class BancoIndisponivel extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = 'BancoIndisponivel';
+  }
+}
+
 const LOCAL_PATH = path.join(process.cwd(), 'data', 'jusmonitor.db');
 
 function resolverUrl(): string {
@@ -118,7 +126,17 @@ async function abrir(): Promise<Client> {
   const url = resolverUrl();
 
   if (url.startsWith('file:')) {
-    mkdirSync(path.dirname(url.slice(5)), { recursive: true });
+    try {
+      mkdirSync(path.dirname(url.slice(5)), { recursive: true });
+    } catch (e) {
+      // Caso típico do Vercel: disco somente leitura. Sem esta mensagem o
+      // sintoma seria um 500 opaco em toda rota que toca o banco.
+      throw new BancoIndisponivel(
+        'Não há banco gravável. Em hospedagem serverless o disco é somente leitura: ' +
+          'defina LIBSQL_URL e LIBSQL_AUTH_TOKEN apontando para um banco libSQL/Turso. ' +
+          `Detalhe: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
   }
 
   const client = createClient({ url, authToken: process.env.LIBSQL_AUTH_TOKEN });
