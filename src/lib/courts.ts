@@ -212,6 +212,7 @@ export const COURTS: Court[] = [
   c('j35', 'TJPI',  'PJe',    '2G',     'https://pje.tjpi.jus.br/2g/login.seam',                                                                           'TJ'),
   c('j36', 'TJPR',  'Projudi','1G',     'https://projudi.tjpr.jus.br/projudi/',                                                                             'TJ'),
   c('j37', 'TJRJ',  'PJe',    '1G',     'https://tjrj.pje.jus.br/1g/login.seam',                                                                           'TJ'),
+  c('j59', 'TJRJ',  'PJe',    '2G',     'https://tjrj.pje.jus.br/2g/login.seam',                                                                           'TJ'),
   c('j38', 'TJRJ',  'Prop',   '1G',     'https://www3.tjrj.jus.br/segweb/faces/login.jsp?indGet=true&SIGLASISTEMA=PORTALSERV',                              'TJ'),
   c('j39', 'TJRJ',  'eProc',  '1G',     'https://eproc1g.tjrj.jus.br/eproc/',                                                                              'TJ'),
   c('j40', 'TJRJ',  'eProc',  '2G',     'https://eproc2g.tjrj.jus.br/eproc/',                                                                              'TJ'),
