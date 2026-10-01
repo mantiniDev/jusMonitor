@@ -128,6 +128,16 @@ check('CloudFront "request could not be satisfied" é bloqueio nosso', () => {
   assert.equal(r.verdict, 'BLOCKED', 'não pode virar "disponível" nem culpar o tribunal');
 });
 
+check('AWS WAF com verificação humana é bloqueio nosso', () => {
+  // Corpo real devolvido pelo PJe 1G do TJES a partir de IP de datacenter.
+  const body = `<html><head><title>Human Verification</title></head><body>
+    <script>window.awsWafCookieDomainList = []; window.gokuProps = { "key":"AQIDAHjcYu" };</script>
+    </body></html>`;
+  const r = evaluateBody('PJe', body);
+  assert.equal(r.verdict, 'BLOCKED');
+  assert.match(r.matched ?? '', /verifica[çc]/i, 'o motivo deve nomear a verificação humana');
+});
+
 check('bloqueio precede manutenção', () => {
   // Se o WAF nos barrou, não sabemos nada sobre o estado do tribunal.
   const body = html('<h1>The requested URL was rejected</h1><p>sistema em manutenção</p>');

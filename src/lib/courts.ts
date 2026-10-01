@@ -188,6 +188,9 @@ export const COURTS: Court[] = [
   c('j14', 'TJCE',  'PJe',    '2G',     'https://pje.tjce.jus.br/pje2grau/login.seam',                                                                     'TJ'),
   c('j15', 'TJDFT', 'PJe',    '1G',     'https://pje.tjdft.jus.br/pje/login.seam',                                                                         'TJ'),
   c('j16', 'TJDFT', 'PJe',    '2G',     'https://pje2i.tjdft.jus.br/pje/login.seam',                                                                       'TJ'),
+  // Os ids são a chave do histórico no ledger: novos endpoints entram no fim da
+  // numeração, nunca renumerando os existentes.
+  c('j57', 'TJES',  'PJe',    '1G',     'https://pje.tjes.jus.br/pje/login.seam',                                                                          'TJ'),
   c('j17', 'TJES',  'PJe',    '2G',     'https://sistemas.tjes.jus.br/pje2g/login.seam',                                                                   'TJ'),
   c('j18', 'TJGO',  'Projudi','1G',     'https://projudi.tjgo.jus.br/#',                                                                                   'TJ'),
   c('j19', 'TJMA',  'PJe',    '1G',     'https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?response_type=code&client_id=pje-tjma-1g&redirect_uri=https%3A%2F%2Fpje.tjma.jus.br%2Fpje%2Flogin.seam&login=true&scope=openid', 'TJ'),
@@ -223,6 +226,7 @@ export const COURTS: Court[] = [
   c('j49', 'TJSC',  'eProc',  '2G',     'https://eproc2g.tjsc.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar',                'TJ'),
   c('j50', 'TJSE',  'Prop',   '1G',     'https://www.tjse.jus.br/portaldoadvogado/',                                                                        'TJ'),
   c('j51', 'TJSE',  'eProc',  '1G',     'https://eproc1g.tjse.jus.br/eproc/',                                                                              'TJ'),
+  c('j58', 'TJSE',  'eProc',  '2G',     'https://eproc2g.tjse.jus.br/eproc/',                                                                              'TJ'),
   c('j52', 'TJSP',  'eSAJ',   '1G',     'https://esaj.tjsp.jus.br/sajcas/login?service=https%3A%2F%2Fesaj.tjsp.jus.br%2Fesaj%2Fj_spring_cas_security_check','TJ'),
   c('j53', 'TJSP',  'eProc',  '1G',     'https://eproc1g.tjsp.jus.br/eproc/',                                                                              'TJ'),
   c('j54', 'TJSP',  'eProc',  '2G',     'https://eproc2g.tjsp.jus.br/eproc/',                                                                              'TJ'),
