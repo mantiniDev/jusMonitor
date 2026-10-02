@@ -49,11 +49,19 @@ const BLOCK_MARKERS: [RegExp, string][] = [
   [/the request could not be satisfied/i,    'CloudFront: request could not be satisfied'],
   [/request blocked/i,                       'Request blocked'],
   [/<title>[^<]*403 forbidden/i,             'Página 403 do servidor'],
-  // Bloqueio por reputação com página própria do tribunal, observado no eProc
-  // do TRF6: devolve 200 com "Acesso Bloqueado" e um Bot-ID de suporte. Sem
-  // este marcador caía como instabilidade do tribunal, culpa que não é dele.
-  [/acesso\s+bloqueado/i,                    'Acesso bloqueado por reputação'],
   [/bot-?id\s+de\s+suporte/i,                'Bloqueio antibot (Bot-ID)'],
+];
+
+/**
+ * Bloqueio anunciado em português corrente. Diferente dos marcadores acima,
+ * que são cadeias de fornecedor e não aparecem por acaso, estas frases existem
+ * como texto de interface: o Projudi do TJGO traz "Acesso bloqueado" num aviso
+ * oculto, numa tela de login perfeitamente funcional. Só contam quando são o
+ * assunto da página — mesma regra aplicada à manutenção.
+ */
+const BLOCK_MARKERS_PROEMINENTES: [RegExp, string][] = [
+  [/acesso\s+bloqueado/i,                    'Acesso bloqueado por reputação'],
+  [/acesso\s+(negado|restrito|n[ãa]o\s+autorizado)/i, 'Acesso negado'],
 ];
 
 /**
@@ -127,8 +135,12 @@ const SYSTEM_MARKERS: Record<CourtSystem, RegExp[]> = {
 const SSO_MARKERS: RegExp[] = [
   /kc-form-login|kc-page-title/i,
   /entrar\s+em\s+pdpj|realms\/pje/i,
-  /\bkeycloak\b/i,
   /cookie not found/i,
+  // `\bkeycloak\b` saiu daqui: a palavra sozinha não prova que a tela do SSO
+  // carregou, e era por ela que a página do PJe desativado do TJPR continuava
+  // passando como operante mesmo depois de endurecermos os marcadores do PJe.
+  // O fallback é generoso por natureza — admitir nele um marcador fraco anula
+  // o aperto feito na assinatura de cada sistema.
 ];
 
 function firstMatch(body: string, markers: [RegExp, string][]): string | undefined {
@@ -171,15 +183,15 @@ const SHORT_PAGE_CHARS = 2000;
  * numa notícia continua funcionando, e marcá-lo como indisponível criaria
  * incidente falso (foi exatamente o que o TJSE produziu na primeira varredura).
  */
-function maintenanceIfProminent(body: string): string | undefined {
-  const inTitle = firstMatch(titleOf(body), MAINTENANCE_MARKERS);
+function seProeminente(body: string, markers: [RegExp, string][]): string | undefined {
+  const inTitle = firstMatch(titleOf(body), markers);
   if (inTitle) return inTitle;
 
-  const inHeading = firstMatch(headingsOf(body), MAINTENANCE_MARKERS);
+  const inHeading = firstMatch(headingsOf(body), markers);
   if (inHeading) return inHeading;
 
   const text = visibleText(body);
-  if (text.length <= SHORT_PAGE_CHARS) return firstMatch(text, MAINTENANCE_MARKERS);
+  if (text.length <= SHORT_PAGE_CHARS) return firstMatch(text, markers);
 
   return undefined;
 }
@@ -192,10 +204,10 @@ function maintenanceIfProminent(body: string): string | undefined {
  * palavra "PJe", então checar o marcador positivo primeiro a daria como boa.
  */
 export function evaluateBody(system: CourtSystem, body: string): ProbeEvaluation {
-  const blocked = firstMatch(body, BLOCK_MARKERS);
+  const blocked = firstMatch(body, BLOCK_MARKERS) ?? seProeminente(body, BLOCK_MARKERS_PROEMINENTES);
   if (blocked) return { verdict: 'BLOCKED', matched: blocked };
 
-  const maintenance = maintenanceIfProminent(body);
+  const maintenance = seProeminente(body, MAINTENANCE_MARKERS);
   if (maintenance) return { verdict: 'MAINTENANCE', matched: maintenance };
 
   const expected = SYSTEM_MARKERS[system];

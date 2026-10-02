@@ -99,8 +99,43 @@ check('SSO do PDPJ pedindo cookie é funcional, não queda', () => {
   assert.equal(evaluateBody('eProc', body).verdict, 'FUNCTIONAL');
 });
 
-check('marcador de Keycloak vale para qualquer sistema', () => {
-  const body = html('<div>Keycloak realms/pje</div>');
+check('tela do SSO do PDPJ vale para qualquer sistema', () => {
+  const body = html('<div>realms/pje</div>');
+  assert.equal(evaluateBody('Projudi', body).verdict, 'FUNCTIONAL');
+});
+
+check('a palavra "keycloak" sozinha NÃO prova que o SSO carregou', () => {
+  // Era por aqui que a página do PJe desativado do TJPR escapava: os
+  // marcadores do PJe foram endurecidos, mas o fallback de SSO aceitava a
+  // palavra solta e devolvia o endpoint morto como operante.
+  const body = html('<p>O acesso passou a ser feito por Keycloak a partir de 2024.</p>');
+  assert.notEqual(evaluateBody('PJe', body).verdict, 'FUNCTIONAL');
+});
+
+check('nome do sistema não basta: página sobre o PJe desativado não é operante', () => {
+  const body = html(
+    '<h1>Processo Judicial Eletrônico</h1>' +
+    '<p>Com a desativação do Sistema PJe neste tribunal, os processos foram migrados.</p>'
+  );
+  assert.equal(evaluateBody('PJe', body).verdict, 'UNEXPECTED');
+});
+
+// ------------------------------------------ proeminência do bloqueio
+check('"Acesso Bloqueado" no título é bloqueio', () => {
+  // Caso real do eProc do TRF6.
+  const body = `<html><head><title>Acesso Bloqueado - TRF6</title></head><body>
+    <p>O acesso solicitado foi rejeitado.</p></body></html>`;
+  assert.equal(evaluateBody('eProc', body).verdict, 'BLOCKED');
+});
+
+check('"Acesso bloqueado" escondido numa página funcional NÃO é bloqueio', () => {
+  // Caso real do Projudi do TJGO: a frase existe como aviso de interface,
+  // numa tela de login que funciona. Marcá-la bloquearia um sistema no ar.
+  const conteudo = 'Consulte seus processos no sistema. '.repeat(120);
+  const body = `<html><head><title>Processo Judicial - TJGO</title></head><body>
+    <form name="formLogin"><input type="password" name="senha"></form>
+    <p>${conteudo}</p>
+    <div style="display:none"><span>Acesso bloqueado</span></div></body></html>`;
   assert.equal(evaluateBody('Projudi', body).verdict, 'FUNCTIONAL');
 });
 
