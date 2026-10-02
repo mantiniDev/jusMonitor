@@ -38,6 +38,46 @@ export function atestavel(kind: IncidentKind): boolean {
   return GRAU[kind] === 0;
 }
 
+/**
+ * Decide a culpa pelo CONJUNTO das observações, não pela pior isolada.
+ *
+ * A primeira versão rebaixava o incidente a cada observação menos atribuível e
+ * nunca deixava subir de volta. O efeito apareceu no TJMT: sete dias fora do
+ * ar, 45 observações, 43 delas apontando o tribunal — 20 com o sistema caído —
+ * e duas falhas de rede isoladas bastaram para apagar a certidão em definitivo.
+ *
+ * A regra agora pesa a evidência. A assimetria que importa é preservada: um
+ * incidente só atesta queda do tribunal quando as observações que a apontam
+ * superam, somadas, todas as ambíguas e as atribuídas a nós.
+ */
+export function classificarPorEvidencia(
+  observacoes: { status: string }[]
+): IncidentKind | null {
+  if (observacoes.length === 0) return null;
+
+  let bloqueante = 0, externa = 0, indeterminada = 0, interna = 0;
+  for (const o of observacoes) {
+    switch (o.status) {
+      case CourtStatus.UNAVAILABLE: bloqueante++; break;
+      case CourtStatus.DEGRADED:    externa++;    break;
+      case CourtStatus.BLOCKED:     interna++;    break;
+      case CourtStatus.ERROR:       indeterminada++; break;
+    }
+  }
+
+  const doTribunal = bloqueante + externa;
+
+  // Se a nossa própria barreira domina, nada se sabe do tribunal.
+  if (interna > 0 && interna >= doTribunal) return 'INTERNA';
+
+  // Para atestar, o que aponta o tribunal precisa superar tudo que não aponta.
+  if (doTribunal > indeterminada + interna) {
+    return bloqueante > 0 ? 'EXTERNA_BLOQUEANTE' : 'EXTERNA';
+  }
+
+  return 'INDETERMINADA';
+}
+
 export interface Incident {
   id: number;
   court_id: string;
@@ -235,15 +275,15 @@ export async function recordCheck(
         [result.message ?? null, s.open_incident_id]
       );
 
-      // O kind era fixado na abertura e nunca mais revisto: um incidente
-      // classificado errado — ou classificado antes de a regra melhorar —
-      // seguia oferecendo certidão indefinidamente. Agora, se uma observação
-      // posterior revela que a culpa é menos atribuível ao tribunal, o
-      // incidente acompanha. Só nessa direção.
+      // A cada nova observação a culpa é recalculada sobre todo o conjunto.
+      // PROGRAMADA fica de fora: ela vem da correlação com o aviso oficial do
+      // tribunal, que é evidência externa e mais forte do que a nossa medição.
       const atual = await getIncident(s.open_incident_id);
-      const novo = classify(result.status);
-      if (atual && GRAU[novo] > GRAU[atual.kind]) {
-        await executar('UPDATE incidents SET kind = ? WHERE id = ?', [novo, s.open_incident_id]);
+      if (atual && atual.kind !== 'PROGRAMADA') {
+        const novo = classificarPorEvidencia(await getEvidence(s.open_incident_id));
+        if (novo && novo !== atual.kind) {
+          await executar('UPDATE incidents SET kind = ? WHERE id = ?', [novo, s.open_incident_id]);
+        }
       }
     } else if (s.fail_streak >= CONFIRM_FAILURES) {
       const startedAt = s.first_fail_at!;
@@ -307,6 +347,39 @@ export async function listIncidents(filter: ListFilter = {}): Promise<Incident[]
 
   const rows = await consultar<Incident>(sql, params);
   return rows.map((r) => ({ ...r }));
+}
+
+export interface Reclassificacao {
+  id: number;
+  court_id: string;
+  de: IncidentKind;
+  para: IncidentKind;
+}
+
+/**
+ * Recalcula a culpa de todos os incidentes a partir da evidência gravada.
+ *
+ * Existe porque a regra de classificação mudou depois de incidentes já terem
+ * sido registrados: os que foram rebaixados pela regra antiga continuariam sem
+ * certidão para sempre, mesmo com a evidência mostrando o contrário. Serve
+ * também como reparo sempre que a classificação evoluir.
+ *
+ * Não toca em PROGRAMADA, que vem do aviso oficial do tribunal e não da
+ * nossa medição.
+ */
+export async function reclassificarTodos(): Promise<Reclassificacao[]> {
+  const incidentes = await listIncidents({ limit: 5000 });
+  const mudancas: Reclassificacao[] = [];
+
+  for (const inc of incidentes) {
+    if (inc.kind === 'PROGRAMADA') continue;
+    const novo = classificarPorEvidencia(await getEvidence(inc.id));
+    if (!novo || novo === inc.kind) continue;
+    await executar('UPDATE incidents SET kind = ? WHERE id = ?', [novo, inc.id]);
+    mudancas.push({ id: inc.id, court_id: inc.court_id, de: inc.kind, para: novo });
+  }
+
+  return mudancas;
 }
 
 /** Estado corrente de todos os endpoints já observados, para o painel. */

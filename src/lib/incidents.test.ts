@@ -172,7 +172,7 @@ check('tela ausente com 200 segue sendo instabilidade do tribunal', async () => 
 });
 
 // --------------------------------------------------- reclassificacao em curso
-check('incidente aberto e reclassificado quando a culpa se revela nossa', async () => {
+check('incidente aberto e reclassificado quando a culpa passa a ser nossa', async () => {
   const court = 'recl01';
   const queda = (): CheckResult => ({
     status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
@@ -183,13 +183,69 @@ check('incidente aberto e reclassificado quando a culpa se revela nossa', async 
   for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, queda(), t(i));
   assert.equal((await listIncidents({ courtId: court }))[0].kind, 'EXTERNA_BLOQUEANTE');
 
+  // Uma observacao de bloqueio nao derruba tres de queda — mas quando o
+  // bloqueio passa a dominar, deixamos de saber o estado do tribunal.
   await recordCheck(court, bloqueio(), t(CONFIRM_FAILURES));
+  assert.equal(
+    (await listIncidents({ courtId: court }))[0].kind, 'EXTERNA_BLOQUEANTE',
+    'uma observacao isolada nao vira o conjunto'
+  );
+
+  for (let i = 1; i <= 3; i++) await recordCheck(court, bloqueio(), t(CONFIRM_FAILURES + i));
   const [depois] = await listIncidents({ courtId: court });
-  assert.equal(depois.kind, 'INTERNA', 'deve seguir a observacao mais recente');
+  assert.equal(depois.kind, 'INTERNA', 'bloqueio passou a dominar');
   assert.equal(atestavel(depois.kind), false, 'deve deixar de oferecer certidao');
 });
 
-check('reclassificacao nao anda para tras', async () => {
+check('uma falha de rede isolada nao apaga a certidao de uma queda evidenciada', async () => {
+  // Caso real do TJMT: sete dias fora do ar, 45 observacoes, 43 apontando o
+  // tribunal — 20 com o sistema caido — e duas falhas de rede isoladas
+  // bastavam para rebaixar o incidente a INDETERMINADA em definitivo.
+  const court = 'peso01';
+  const queda = (): CheckResult => ({
+    status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
+  });
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, queda(), t(i));
+  for (let i = 0; i < 12; i++) await recordCheck(court, queda(), t(CONFIRM_FAILURES + i));
+  // o soluco de rede no meio
+  await recordCheck(court, timeout(), t(20));
+  for (let i = 0; i < 5; i++) await recordCheck(court, queda(), t(21 + i));
+
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'EXTERNA_BLOQUEANTE', 'o peso da evidencia aponta o tribunal');
+  assert.equal(atestavel(inc.kind), true, 'a certidao deve seguir disponivel');
+});
+
+check('timeout predominante continua sem certidao', async () => {
+  const court = 'peso02';
+  const queda = (): CheckResult => ({
+    status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
+  });
+  await recordCheck(court, queda(), t(0));
+  for (let i = 0; i < 8; i++) await recordCheck(court, timeout(), t(1 + i));
+
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'INDETERMINADA', 'o ambiguo supera o atribuivel');
+  assert.equal(atestavel(inc.kind), false);
+});
+
+check('bloqueio nosso predominante vence a queda observada', async () => {
+  const court = 'peso03';
+  const queda = (): CheckResult => ({
+    status: CourtStatus.UNAVAILABLE, message: 'HTTP 503', httpStatus: 503, latencyMs: 10,
+  });
+  const waf = (): CheckResult => ({
+    status: CourtStatus.BLOCKED, message: 'WAF', httpStatus: 403, latencyMs: 10,
+  });
+  for (let i = 0; i < CONFIRM_FAILURES; i++) await recordCheck(court, queda(), t(i));
+  for (let i = 0; i < 6; i++) await recordCheck(court, waf(), t(CONFIRM_FAILURES + i));
+
+  const [inc] = await listIncidents({ courtId: court });
+  assert.equal(inc.kind, 'INTERNA', 'se a nossa barreira domina, nada se sabe do tribunal');
+  assert.equal(atestavel(inc.kind), false);
+});
+
+check('queda isolada nao atesta tribunal se o bloqueio nosso domina', async () => {
   const court = 'recl02';
   const bloqueio = (): CheckResult => ({
     status: CourtStatus.BLOCKED, message: 'WAF', httpStatus: 403, latencyMs: 10,
