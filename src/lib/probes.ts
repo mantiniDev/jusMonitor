@@ -49,6 +49,11 @@ const BLOCK_MARKERS: [RegExp, string][] = [
   [/the request could not be satisfied/i,    'CloudFront: request could not be satisfied'],
   [/request blocked/i,                       'Request blocked'],
   [/<title>[^<]*403 forbidden/i,             'Página 403 do servidor'],
+  // Bloqueio por reputação com página própria do tribunal, observado no eProc
+  // do TRF6: devolve 200 com "Acesso Bloqueado" e um Bot-ID de suporte. Sem
+  // este marcador caía como instabilidade do tribunal, culpa que não é dele.
+  [/acesso\s+bloqueado/i,                    'Acesso bloqueado por reputação'],
+  [/bot-?id\s+de\s+suporte/i,                'Bloqueio antibot (Bot-ID)'],
 ];
 
 /**
@@ -76,12 +81,15 @@ const MAINTENANCE_MARKERS: [RegExp, string][] = [
  * exigir vários geraria falso negativo.
  */
 const SYSTEM_MARKERS: Record<CourtSystem, RegExp[]> = {
+  // Só marcadores que provam que a TELA DE ACESSO renderizou. O nome do sistema
+  // não serve: a página que anuncia a desativação do PJe no TJPR contém "PJe" e
+  // "Processo Judicial Eletrônico" em abundância, e passava como operante.
+  // Medição em 139 endpoints PJe alcançáveis do catálogo: todos casam pelo menos
+  // um destes três, e a página do sistema desativado não casa nenhum.
   PJe: [
     /j_username|j_password/i,
     /loginForm|login\.seam/i,
     /kc-form-login|kc-page-title/i,          // SSO Keycloak do PJe na nuvem
-    /processo\s+judicial\s+eletr[ôo]nico/i,
-    /\bpje\b/i,
   ],
   eProc: [
     /txtUsuario|pwdSenha|sbmEntrar/i,
@@ -95,6 +103,10 @@ const SYSTEM_MARKERS: Record<CourtSystem, RegExp[]> = {
     /usuario.*senha|loginForm/i,
     /\besaj\b/i,
   ],
+  // TODO: o nome do sistema ainda é aceito como marcador aqui, e isso é fraco
+  // pelo mesmo motivo que era no PJe. O Projudi é baseado em frames — a página
+  // de entrada é um frameset magro e o formulário mora no frame filho —, então
+  // endurecer exige um marcador de frameset, não de formulário.
   Projudi: [
     /\bprojudi\b/i,
     /login.*senha/i,
